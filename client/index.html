@@ -1173,6 +1173,186 @@
       to { transform: translateX(0); opacity: 1; }
     }
 
+    /* Practice plan summary grid */
+    .plan-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+
+    .plan-day-card {
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      padding: 12px 8px;
+      text-align: center;
+      border: 1px solid var(--border);
+      transition: var(--transition);
+    }
+
+    .plan-day-card.has-plan {
+      background: linear-gradient(135deg, rgba(108, 92, 231, 0.04), rgba(108, 92, 231, 0.08));
+      border-color: rgba(108, 92, 231, 0.2);
+    }
+
+    .plan-day-card .plan-day-name {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .plan-day-card .plan-day-duration {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .plan-day-card .plan-day-unit {
+      font-size: 11px;
+      color: var(--text-light);
+      font-weight: 400;
+    }
+
+    .plan-day-card .plan-day-empty {
+      color: var(--text-muted);
+      font-size: 16px;
+    }
+
+    .plan-day-card .plan-day-songs {
+      font-size: 11px;
+      color: var(--text-light);
+      margin-top: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Practice plan edit modal */
+    .plan-edit-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .plan-edit-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .plan-edit-day {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .plan-edit-fields {
+      display: flex;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .plan-edit-field {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .plan-edit-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .plan-edit-select {
+      padding: 8px 10px !important;
+      font-size: 13px !important;
+    }
+
+    /* Today's plan card */
+    .today-plan-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .today-plan-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .today-plan-value {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .today-plan-unit {
+      font-size: 13px;
+      color: var(--text-light);
+      font-weight: 400;
+    }
+
+    .today-plan-songs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .today-plan-song-tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(108, 92, 231, 0.08);
+      color: var(--primary);
+    }
+
+    /* Day cell plan indicators */
+    .day-plan-indicator {
+      font-size: 12px;
+      margin-bottom: 2px;
+      cursor: default;
+    }
+
+    .day-cell.has-plan {
+      border-style: dashed;
+    }
+
+    .day-plan-duration {
+      font-size: 10px;
+      color: var(--primary-light);
+      margin-top: 2px;
+    }
+
+    @media (max-width: 768px) {
+      .plan-summary-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .plan-edit-fields {
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .plan-edit-row {
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .plan-edit-day {
+        width: 100%;
+        height: 32px;
+      }
+    }
+
     /* Responsive */
     @media (max-width: 600px) {
       .week-calendar {
@@ -1205,6 +1385,10 @@
       .navbar-links {
         flex-wrap: wrap;
         justify-content: center;
+      }
+
+      .plan-summary-grid {
+        grid-template-columns: repeat(4, 1fr);
       }
     }
   </style>

@@ -77,6 +77,18 @@ export function initDB() {
       UNIQUE(user_id, date),
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+
+    CREATE TABLE IF NOT EXISTS practice_plans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      day_of_week INTEGER NOT NULL,
+      duration INTEGER NOT NULL DEFAULT 0,
+      songs TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, day_of_week),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
   `);
 }
 

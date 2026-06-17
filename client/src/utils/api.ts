@@ -69,6 +69,9 @@ export const practiceAPI = {
   week: () => request('/practice/week'),
   history: (page = 1, limit = 20) => request(`/practice/history?page=${page}&limit=${limit}`),
   stats: (period = 'week') => request(`/practice/stats?period=${period}`),
+  getPlan: () => request('/practice/plan'),
+  savePlan: (plans: { day_of_week: number; duration: number; songs: string }[]) =>
+    request('/practice/plan', { method: 'PUT', body: { plans } }),
 };
 
 // Community API

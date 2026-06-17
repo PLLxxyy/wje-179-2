@@ -70,10 +70,14 @@ router.get('/today', authMiddleware, (req: AuthRequest, res: Response) => {
     const user = db.prepare('SELECT daily_goal FROM users WHERE id = ?').get(req.userId) as any;
     const logs = db.prepare('SELECT * FROM practice_logs WHERE user_id = ? AND date(started_at) = ? ORDER BY started_at DESC').all(req.userId, today);
 
+    const dayOfWeek = new Date().getDay() || 7;
+    const plan = db.prepare('SELECT * FROM practice_plans WHERE user_id = ? AND day_of_week = ?').get(req.userId, dayOfWeek) as any;
+
     res.json({
       checkin: checkin || null,
       daily_goal: user?.daily_goal || 30,
-      todayLogs: logs
+      todayLogs: logs,
+      todayPlan: plan ? { duration: plan.duration, songs: plan.songs } : null,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -84,7 +88,7 @@ router.get('/today', authMiddleware, (req: AuthRequest, res: Response) => {
 router.get('/week', authMiddleware, (req: AuthRequest, res: Response) => {
   try {
     const now = new Date();
-    const dayOfWeek = now.getDay() || 7; // 1=Monday ... 7=Sunday
+    const dayOfWeek = now.getDay() || 7;
     const monday = new Date(now);
     monday.setDate(now.getDate() - dayOfWeek + 1);
     monday.setHours(0, 0, 0, 0);
@@ -101,20 +105,24 @@ router.get('/week', authMiddleware, (req: AuthRequest, res: Response) => {
 
     const user = db.prepare('SELECT daily_goal FROM users WHERE id = ?').get(req.userId) as any;
 
-    // Build week data
+    const plans = db.prepare('SELECT * FROM practice_plans WHERE user_id = ? ORDER BY day_of_week').all(req.userId) as any[];
+
     const weekData = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
       const dateStr = d.toISOString().split('T')[0];
       const record = (records as any[]).find(r => r.date === dateStr);
+      const dayPlan = plans.find(p => p.day_of_week === i + 1);
       weekData.push({
         date: dateStr,
         day: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][i],
         total_duration: record?.total_duration || 0,
         goal_met: record?.goal_met || 0,
         isToday: dateStr === now.toISOString().split('T')[0],
-        isFuture: d > now
+        isFuture: d > now,
+        planDuration: dayPlan?.duration || 0,
+        planSongs: dayPlan?.songs || '',
       });
     }
 
@@ -241,6 +249,64 @@ router.get('/stats', authMiddleware, (req: AuthRequest, res: Response) => {
       bestStreak,
       period
     });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/plan', authMiddleware, (req: AuthRequest, res: Response) => {
+  try {
+    const plans = db.prepare('SELECT * FROM practice_plans WHERE user_id = ? ORDER BY day_of_week').all(req.userId) as any[];
+    const result = [1, 2, 3, 4, 5, 6, 7].map(dow => {
+      const plan = plans.find(p => p.day_of_week === dow);
+      return {
+        day_of_week: dow,
+        duration: plan?.duration || 0,
+        songs: plan?.songs || '',
+      };
+    });
+    res.json({ plans: result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/plan', authMiddleware, (req: AuthRequest, res: Response) => {
+  try {
+    const { plans } = req.body;
+    if (!Array.isArray(plans)) {
+      return res.status(400).json({ error: '数据格式错误' });
+    }
+
+    const upsert = db.prepare(`
+      INSERT INTO practice_plans (user_id, day_of_week, duration, songs, updated_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id, day_of_week) DO UPDATE SET
+        duration = excluded.duration,
+        songs = excluded.songs,
+        updated_at = CURRENT_TIMESTAMP
+    `);
+
+    const transaction = db.transaction(() => {
+      for (const plan of plans) {
+        const dow = plan.day_of_week;
+        if (dow < 1 || dow > 7) continue;
+        upsert.run(req.userId!, dow, plan.duration || 0, plan.songs || '');
+      }
+    });
+
+    transaction();
+
+    const updated = db.prepare('SELECT * FROM practice_plans WHERE user_id = ? ORDER BY day_of_week').all(req.userId) as any[];
+    const result = [1, 2, 3, 4, 5, 6, 7].map(dow => {
+      const plan = updated.find(p => p.day_of_week === dow);
+      return {
+        day_of_week: dow,
+        duration: plan?.duration || 0,
+        songs: plan?.songs || '',
+      };
+    });
+    res.json({ plans: result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

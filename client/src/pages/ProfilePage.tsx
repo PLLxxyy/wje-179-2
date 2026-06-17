@@ -16,6 +16,12 @@ interface ProfilePageProps {
   showToast: (type: 'success' | 'error', message: string) => void;
 }
 
+interface DayPlan {
+  day_of_week: number;
+  duration: number;
+  songs: string;
+}
+
 const INSTRUMENTS = ['钢琴', '吉他', '小提琴', '架子鼓'];
 const INSTRUMENT_ICONS: Record<string, string> = {
   '钢琴': '🎹',
@@ -23,6 +29,9 @@ const INSTRUMENT_ICONS: Record<string, string> = {
   '小提琴': '🎻',
   '架子鼓': '🥁',
 };
+
+const DAY_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+const DAY_COLORS = ['#6C5CE7', '#00CEC9', '#FD79A8', '#FDCB6E', '#00B894', '#FF6B6B', '#A29BFE'];
 
 const PIE_COLORS = ['#6C5CE7', '#00CEC9', '#FD79A8', '#FDCB6E', '#00B894', '#FF6B6B', '#A29BFE', '#74B9FF'];
 
@@ -35,10 +44,20 @@ export default function ProfilePage({ user, setUser, showToast }: ProfilePagePro
   const [editBio, setEditBio] = useState(user.bio || '');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showPlan, setShowPlan] = useState(false);
+  const [planData, setPlanData] = useState<DayPlan[]>(
+    DAY_NAMES.map((_, i) => ({ day_of_week: i + 1, duration: 0, songs: '' }))
+  );
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planSaving, setPlanSaving] = useState(false);
 
   useEffect(() => {
     loadStats();
   }, [period]);
+
+  useEffect(() => {
+    loadPlan();
+  }, []);
 
   const loadStats = async () => {
     setLoading(true);
@@ -49,6 +68,32 @@ export default function ProfilePage({ user, setUser, showToast }: ProfilePagePro
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPlan = async () => {
+    setPlanLoading(true);
+    try {
+      const data = await practiceAPI.getPlan();
+      setPlanData(data.plans);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
+  const handleSavePlan = async () => {
+    setPlanSaving(true);
+    try {
+      const data = await practiceAPI.savePlan(planData);
+      setPlanData(data.plans);
+      setShowPlan(false);
+      showToast('success', '练习计划已保存');
+    } catch (err: any) {
+      showToast('error', err.message || '保存失败');
+    } finally {
+      setPlanSaving(false);
     }
   };
 
@@ -102,6 +147,34 @@ export default function ProfilePage({ user, setUser, showToast }: ProfilePagePro
         <button className="btn btn-secondary" onClick={() => setShowEdit(true)} style={{ marginLeft: 'auto' }}>
           编辑资料
         </button>
+      </div>
+
+      {/* Practice Plan Summary */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div className="card-title" style={{ marginBottom: 0 }}>📅 每周练习计划</div>
+          <button className="btn btn-secondary" onClick={() => { setShowPlan(true); loadPlan(); }} style={{ fontSize: 13, padding: '6px 14px' }}>
+            设置计划
+          </button>
+        </div>
+        <div className="plan-summary-grid">
+          {planData.map((plan, idx) => {
+            const hasPlan = plan.duration > 0 || plan.songs;
+            return (
+              <div key={plan.day_of_week} className={`plan-day-card ${hasPlan ? 'has-plan' : ''}`}>
+                <div className="plan-day-name" style={{ color: DAY_COLORS[idx] }}>{DAY_NAMES[idx]}</div>
+                <div className="plan-day-duration">
+                  {plan.duration > 0 ? <>{plan.duration}<span className="plan-day-unit">分钟</span></> : <span className="plan-day-empty">—</span>}
+                </div>
+                {plan.songs && (
+                  <div className="plan-day-songs" title={plan.songs}>
+                    {plan.songs.length > 8 ? plan.songs.slice(0, 8) + '…' : plan.songs}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Overall stats */}
@@ -227,6 +300,73 @@ export default function ProfilePage({ user, setUser, showToast }: ProfilePagePro
               <button className="btn btn-secondary" onClick={() => setShowEdit(false)}>取消</button>
               <button className="btn btn-primary" onClick={handleSaveProfile} disabled={saving}>
                 {saving ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Practice Plan Edit Modal */}
+      {showPlan && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowPlan(false); }}>
+          <div className="modal" style={{ maxWidth: 640 }}>
+            <div className="modal-title">📅 设置每周练习计划</div>
+            <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 20 }}>
+              为每天的练习设定目标时长和计划曲目，帮助你养成规律的练习习惯。
+            </p>
+            {planLoading ? (
+              <div className="loading">加载中</div>
+            ) : (
+              <div className="plan-edit-list">
+                {planData.map((plan, idx) => (
+                  <div key={plan.day_of_week} className="plan-edit-row">
+                    <div className="plan-edit-day" style={{ background: DAY_COLORS[idx], color: '#fff' }}>
+                      {DAY_NAMES[idx]}
+                    </div>
+                    <div className="plan-edit-fields">
+                      <div className="plan-edit-field">
+                        <label className="plan-edit-label">时长</label>
+                        <select
+                          className="form-select plan-edit-select"
+                          value={plan.duration}
+                          onChange={e => {
+                            const next = [...planData];
+                            next[idx] = { ...next[idx], duration: Number(e.target.value) };
+                            setPlanData(next);
+                          }}
+                        >
+                          <option value={0}>休息</option>
+                          <option value={15}>15 分钟</option>
+                          <option value={30}>30 分钟</option>
+                          <option value={45}>45 分钟</option>
+                          <option value={60}>1 小时</option>
+                          <option value={90}>1.5 小时</option>
+                          <option value={120}>2 小时</option>
+                        </select>
+                      </div>
+                      <div className="plan-edit-field" style={{ flex: 2 }}>
+                        <label className="plan-edit-label">曲目</label>
+                        <input
+                          className="form-input"
+                          type="text"
+                          placeholder="计划练习的曲目，用逗号分隔"
+                          value={plan.songs}
+                          onChange={e => {
+                            const next = [...planData];
+                            next[idx] = { ...next[idx], songs: e.target.value };
+                            setPlanData(next);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+              <button className="btn btn-secondary" onClick={() => setShowPlan(false)}>取消</button>
+              <button className="btn btn-primary" onClick={handleSavePlan} disabled={planSaving}>
+                {planSaving ? '保存中...' : '保存计划'}
               </button>
             </div>
           </div>

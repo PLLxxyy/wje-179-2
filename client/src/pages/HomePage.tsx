@@ -24,12 +24,15 @@ interface WeekDay {
   goal_met: number;
   isToday: boolean;
   isFuture: boolean;
+  planDuration: number;
+  planSongs: string;
 }
 
 interface TodayData {
   checkin: any;
   daily_goal: number;
   todayLogs: any[];
+  todayPlan: { duration: number; songs: string } | null;
 }
 
 export default function HomePage({ user, navigate, showToast }: HomePageProps) {
@@ -119,6 +122,63 @@ export default function HomePage({ user, navigate, showToast }: HomePageProps) {
         </button>
       </div>
 
+      {/* Today's Plan */}
+      {todayData?.todayPlan && (todayData.todayPlan.duration > 0 || todayData.todayPlan.songs) && (
+        <div className="card" style={{ marginBottom: 24 }}>
+          <div className="card-title">📋 今日练习计划</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+            {todayData.todayPlan.duration > 0 && (
+              <div className="today-plan-item">
+                <div className="today-plan-label">计划时长</div>
+                <div className="today-plan-value" style={{ color: 'var(--primary)' }}>
+                  {todayData.todayPlan.duration} <span className="today-plan-unit">分钟</span>
+                </div>
+              </div>
+            )}
+            {todayData.todayPlan.songs && (
+              <div className="today-plan-item" style={{ flex: 2 }}>
+                <div className="today-plan-label">计划曲目</div>
+                <div className="today-plan-songs">
+                  {todayData.todayPlan.songs.split(/[,，、]/).filter(Boolean).map((s, i) => (
+                    <span key={i} className="today-plan-song-tag">{s.trim()}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {todayData.todayPlan.duration > 0 && (
+              <div className="today-plan-item">
+                <div className="today-plan-label">计划进度</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{
+                    flex: 1,
+                    height: 8,
+                    background: 'var(--border)',
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                    minWidth: 80
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(100, Math.round((todayDuration / todayData.todayPlan.duration) * 100))}%`,
+                      background: todayDuration >= todayData.todayPlan.duration ? 'var(--success)' : 'var(--primary)',
+                      borderRadius: 4,
+                      transition: 'width 0.3s ease'
+                    }}></div>
+                  </div>
+                  <span style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: todayDuration >= todayData.todayPlan.duration ? 'var(--success)' : 'var(--primary)'
+                  }}>
+                    {Math.min(100, Math.round((todayDuration / todayData.todayPlan.duration) * 100))}%
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Today's practice logs */}
       {todayData?.todayLogs && todayData.todayLogs.length > 0 && (
         <div className="card" style={{ marginBottom: 24 }}>
@@ -151,11 +211,17 @@ export default function HomePage({ user, navigate, showToast }: HomePageProps) {
             if (day.isFuture) cellClass += ' future';
             else if (day.total_duration > 0 && day.goal_met) cellClass += ' goal-met';
             else if (day.total_duration > 0 && !day.goal_met) cellClass += ' goal-not-met';
+            if (day.planDuration > 0 || day.planSongs) cellClass += ' has-plan';
 
             return (
               <div key={day.date} className={cellClass}>
                 <div className="day-name">{day.day}</div>
                 <div className="day-date">{day.date.split('-').slice(1).join('/')}</div>
+                {(day.planDuration > 0 || day.planSongs) && (
+                  <div className="day-plan-indicator" title={day.planSongs ? `计划: ${day.planDuration}分钟 - ${day.planSongs}` : `计划: ${day.planDuration}分钟`}>
+                    📋
+                  </div>
+                )}
                 <div className="day-duration" style={{
                   color: day.total_duration > 0
                     ? day.goal_met ? 'var(--success)' : 'var(--danger)'
@@ -164,6 +230,9 @@ export default function HomePage({ user, navigate, showToast }: HomePageProps) {
                   {day.total_duration}
                 </div>
                 <div className="day-unit">分钟</div>
+                {day.planDuration > 0 && (
+                  <div className="day-plan-duration">目标{day.planDuration}分</div>
+                )}
                 {!day.isFuture && (
                   <div className="day-status">
                     {day.total_duration === 0
